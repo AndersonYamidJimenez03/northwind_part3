@@ -16,7 +16,7 @@ DROP TABLE IF EXISTS shippers;
 DROP TABLE IF EXISTS customers;
 DROP TABLE IF EXISTS employees;
 
-
+DROP TABLE IF EXISTS logs;
 -- tables' creation
 
 -- employees table
@@ -180,3 +180,14 @@ ALTER TABLE regions OWNER TO postgres;
 ALTER TABLE shippers OWNER TO postgres;
 ALTER TABLE suppliers OWNER TO postgres;
 ALTER TABLE territories OWNER TO postgres;
+
+-- Creation de tabla logs para el caso de procedure que usa cursores
+
+CREATE TABLE logs(
+    logId SERIAL NOT NULL,
+    productId_log INT,
+    unitprice_log DECIMAL,
+    percentage_increment_log DECIMAL,
+    user_log TEXT,
+    constraint pk_logs PRIMARY KEY(logId)
+)
