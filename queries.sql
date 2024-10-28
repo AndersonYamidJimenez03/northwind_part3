@@ -91,9 +91,6 @@ SELECT * FROM products;
 
 */
 
-
-
-
 CREATE OR REPLACE PROCEDURE updateProductsByCategory(
     category_id INT,
     percentage_increment DECIMAL
@@ -163,29 +160,57 @@ WHERE categoryid = 7;
 
 SELECT * FROM logs;
 
-ROLLBACK;
-
-
-
-
-
 
 
 
 /*
+    Procedure para garantizar la integridad de los productos 
+    vendidos comparados con los productos en inventario.
+    Asi, nunca debe existir una disparidad entre los 
+    productos totales, dado que deben ser vendidos o 
+    permanecer como inventario. En caso contrario se cancela la transaction, todo esto se lleva a cabo antes de realizar la orden
+*/
 
-CREATE OR REPLACE PROCEDURE promote_employee(emp_id INT, new_position VARCHAR)
-LANGUAGE plpgsql
+
+CREATE OR REPLACE PROCEDURE inventaryControl(
+    product_sold_id INT, 
+    quantity INT
+) LANGUAGE plpgsql
 AS $$
+DECLARE inventaryQuantity INT := (SELECT unitsinstock FROM products WHERE productId = product_sold_id);
 BEGIN
-    IF EXISTS (SELECT 1 FROM employees WHERE id = emp_id AND position != new_position) THEN
-        UPDATE employees
-        SET position = new_position
-        WHERE id = emp_id;
-        RAISE NOTICE 'Employee promoted to %', new_position;
-    ELSE
-        RAISE NOTICE 'No change needed';
+
+    -- Here, it checks if the company has the quantity 
+    -- require for the purchase 
+    IF inventaryQuantity < quantity THEN
+        RAISE EXCEPTION 'There is not the quantity % of productId = % in stock', quantity, product_sold_id 
+            USING ERRCODE = 'C0001';
     END IF;
+
+    -- update the new stock of product
+    UPDATE products
+    SET unitsinstock = unitsinstock - quantity
+    WHERE productid = product_sold_id;
+  
+
+    --COMMIT;
+EXCEPTION
+    WHEN SQLSTATE 'C0001' THEN
+        ROLLBACK;
+        RAISE NOTICE '%', SQLERRM;
+    WHEN OTHERS THEN
+        ROLLBACK;
+        RAISE NOTICE 'Other error found';     
 END;
 $$;
-*/
+
+
+-- ProductId: 3 has 13 units in stock, so 
+-- this call will produce an exception
+CALL inventaryControl(3, 15);
+
+-- ProductId: 4 has 53 units in stock, so 
+-- this call will produce a sale and a new stock equal to 3
+CALL inventaryControl(4, 50);
+
+SELECT * FROM products;
