@@ -1,18 +1,18 @@
 # NorthWind Database (Part 3)
 
-La parte 3 de nuestros projectos con la base de datos NorthWind, se basa exclusivamente al trabajo y manejo de los procedures. Estos a diferencia de las user-defined functions (UDF) estan disenadas para hacer tareas directamente en la base de datos, dicho de otro modo para realizar cambios.
+Part 3 of our projects with the NorthWind database focuses exclusively on working with and managing stored procedures. These, unlike user-defined functions (UDFs), are designed to perform tasks directly on the database—in other words, to make changes.
 
-Los procedures estan construidos para manejar transactiones de forma explicita, gestionar exceptiones y permitir parametros de entrada y salida contrario a las UDF.
+Stored procedures are built to handle transactions explicitly, manage exceptions, and allow for input and output parameters, unlike UDFs.
 
 As previously mentioned in the Northwind Project Part 1 and 2, our database structure is a snowflake type, where our fact table is the "order_details" table, and the others are dimensional tables.
 
 ### The procedures requiered are:
 
-1. Creation de un procedure para modificar el primer nombre de cualquier empleado dado un Id de empleado.
-2. Construction de un procedure el cual se encargara de aumentar el valor de un producto ya sea por inflacion o por otro aumento, dado el id de producto y el porcentaje de incremento para su precio.
-3. Generar un procedure para restaurar el valor del producto modificado en el punto anterior (numero 2). para lo cual se utilizara exceptiones y transactiones para garantizar la integrirar de los datos y el uso de propiedades ACID.
-4. Desarrollar un procedure que incrementara porcentualmente los productos dentro de una categoria selectionada por medio de un cursor, el cual actualizara el valor de las categorias menores a 5 segun el argumento compartido y para las categorias mayores o iguales a 5 se les adicionara otro aumento del 10% por defecto. Por ultimo, para validar quien realizo que cambios y su magnitud se adicionara cada registro en la tabla logs.
-5. Create un procedure que valide la cantidad de stock de un producto y en caso de que la cantidad sea mayor o igual a la cantidad demandada entonces realizar la modificacion en la base de datos.
+1. Create a procedure to modify the first name of any employee given an employee ID.
+2. Construct a procedure that will increase the price of a product due to inflation or any other price increase, given the product ID and the percentage increase for its price.
+3. Generate a procedure to restore the price of the product modified in the previous step (number 2). Exceptions and transactions will be used to ensure data integrity and enforce ACID properties.
+4. Develop a procedure that will incrementally increase the prices of products within a selected category using a cursor. This cursor will update the prices of categories below 5 according to the specified argument, and for categories 5 and above, an additional 10% increase will be applied by default. Lastly, to track who made the changes and the extent of each modification, every entry will be logged in the logs table.
+5. Create a procedure that validates the stock quantity of a product, and if the quantity is greater than or equal to the requested amount, it will proceed to modify the database accordingly.
 
 # Tools I used
 
@@ -24,9 +24,9 @@ These are the tools were used in this analysis:
 
 # Analysis
 
-Como se menciono anteriormente, este projecto se centra en el uso de procedures y sus diferentes propiedades y funciones. Iniciaremos procedures mas siemples y se buscara ir adicionando otras capacidades como transactiones, exceptiones y uso de cursor.
+As mentioned earlier, this project focuses on the use of procedures and their various properties and functions. We will start with simpler procedures and gradually add other capabilities, such as transactions, exceptions, and the use of cursors.
 
-1. Creation de un procedure para modificar el primer nombre de cualquier empleado dado un Id de empleado.
+1. Create a procedure to modify the first name of any employee given an employee ID.
 
 ```sql
 CREATE OR REPLACE PROCEDURE updateNancysName()
@@ -42,9 +42,9 @@ $$;
 CALL updateNancysName();
 ```
 
-Este primer procedure no recibe argumentos, sino que directamente va a la base de datos para actualizar el nombre del empleado con id igual a 1. Y posteriormente modificar su nombre a 'Nanncy'.
+This first procedure does not receive arguments; instead, it directly accesses the database to update the name of the employee with an ID of 1, changing their name to 'Nanncy'.
 
-2. Construction de un procedure el cual se encargara de aumentar el valor de un producto ya sea por inflacion o por otro aumento, dado el id de producto y el porcentaje de incremento para su precio.
+2. Construct a procedure that will increase the price of a product due to inflation or any other price increase, given the product ID and the percentage increase for its price.
 
 ```sql
 CREATE OR REPLACE PROCEDURE updateProduct(
@@ -66,9 +66,9 @@ CALL updateProduct(3, 0.2);
 SELECT productid, unitprice FROM products;
 ```
 
-Este procedure empieza con dos parametros; id y incremento porcentual. El procedure toma estos argumentos para filtar por el Id del producto y luego para realizar el incremento al precio unitario del producto. Asi es como se llama el procedure en el caso de el id: 3 e incremento del 20% a su precio unicial de 10.
+This procedure starts with two parameters: ID and percentage increase. The procedure uses these arguments to filter by the product ID and then apply the increase to the product’s unit price. Here’s how the procedure is called in the case of ID 3 with a 20% increase to its initial price of 10.
 
-3. Generar un procedure para restaurar el valor del producto modificado en el punto anterior (numero 2). para lo cual se utilizara exceptiones y transactiones para garantizar la integrirar de los datos y el uso de propiedades ACID.
+3. Generate a procedure to restore the price of the product modified in the previous step (number 2). Exceptions and transactions will be used to ensure data integrity and enforce ACID properties.
 
 ```sql
 CREATE OR REPLACE PROCEDURE restoreProductPrice(
@@ -110,9 +110,9 @@ CALL restoreProductPrice(-8, 10);
 SELECT * FROM products;
 ```
 
-En el anterior procedure, reciben dos argumentos id y precio original. Y para realizar la modificacion en la base de datos, inicialmente se valida el valor de id del producto el cual no puede ser menor de 0. Pero tambien se valida si realmente se genero una modificacion en la base de datos por eso se usa la variable 'FOUND', la cual nos indica si se produjo algun cambio. Segun las llamadas realizadas al procedure, la primera se realiza sin problema, la segunda al tener un id de producto igual a cero, procede a iniciar la actualizacion, pero al no activarse la variable 'FOUND', simplemente recibimos la exception de que el producto no se encontro. Y por ultimo, el id al ser negativo directamente la exception inicial fue inicializada.
+In the previous procedure, two arguments are received: ID and original price. To perform the modification in the database, the product ID is first validated, which cannot be less than 0. It is also checked whether a modification was actually made in the database; for this, the variable 'FOUND' is used, which indicates if any changes occurred. According to the calls made to the procedure, the first one is executed without issues. The second, having a product ID of zero, proceeds to start the update, but since the 'FOUND' variable does not activate, we simply receive an exception indicating that the product was not found. Finally, with a negative ID, the initial exception was triggered directly.
 
-4. Desarrollar un procedure que incrementara porcentualmente los productos dentro de una categoria selectionada por medio de un cursor, el cual actualizara el valor de las categorias menores a 5 segun el argumento compartido y para las categorias mayores o iguales a 5 se les adicionara otro aumento del 10% por defecto. Por ultimo, para validar quien realizo que cambios y su magnitud se adicionara cada registro en la tabla logs.
+4. Develop a procedure that will incrementally increase the prices of products within a selected category using a cursor. This cursor will update the prices of categories below 5 according to the specified argument, and for categories 5 and above, an additional 10% increase will be applied by default. Lastly, to track who made the changes and the extent of each modification, every entry will be logged in the logs table.
 
 ```sql
 
@@ -193,9 +193,9 @@ WHERE categoryid = 7;
 SELECT * FROM logs;
 ```
 
-Este procedure implementa las mismas funcionalidades del procedure como validacion de argumentos y transaciones. Adicionalmente, se utiliza un cursor para ir a cada dato a nivel granular por medio de un loop. Dentro del loop se realiza la validacion de cual categoria en cuestion y al final se registra los datos modificados y el usuario que realizo los cambios.
+This procedure implements the same functionalities as the previous procedure, such as argument validation and transactions. Additionally, a cursor is used to access each data entry at a granular level through a loop. Within the loop, validation is performed to determine which category is being addressed, and at the end, the modified data and the user who made the changes are recorded.
 
-5. Create un procedure que valide la cantidad de stock de un producto y en caso de que la cantidad sea mayor o igual a la cantidad demandada entonces realizar la modificacion en la base de datos.
+5. Create a procedure that validates the stock quantity of a product, and if the quantity is greater than or equal to the requested amount, it will proceed to modify the database accordingly.
 
 ```sql
 CREATE OR REPLACE PROCEDURE inventaryControl(
@@ -230,7 +230,6 @@ EXCEPTION
 END;
 $$;
 
-
 -- ProductId: 3 has 13 units in stock, so
 -- this call will produce an exception
 CALL inventaryControl(3, 15);
@@ -238,10 +237,16 @@ CALL inventaryControl(3, 15);
 -- ProductId: 4 has 53 units in stock, so
 -- this call will produce a sale and a new stock equal to 3
 CALL inventaryControl(4, 50);
-
-SELECT * FROM products;
 ```
+
+This final procedure is responsible for performing an initial validation and then modifying the stock quantities of a product before a purchase. It accepts the arguments of the product ID and the quantity to be purchased, and then makes the necessary modifications in the database. If a quantity greater than the available stock is requested, an exception will be raised to prevent the purchase.
 
 # What I learned
 
+As mentioned earlier, this project was entirely based on the use and management of procedures. This allowed me to delve into multiple aspects (though there is still more to learn), such as exceptions, parameter types, clauses for modifying the database, transactions, and finally, the use of cursors to make modifications at a granular level and gain more detailed access to each record within the cursor.
+
+Without a doubt, I learned many things through this project, which has given me new ideas for future projects and an opportunity to continue improving my SQL knowledge.
+
 ## Closing Thoughts
+
+This project gave me insight into understanding the use of procedures and their differences from user-defined functions (UDFs). Beyond the potential of procedures for performing repetitive tasks in the database, the most important aspect is knowing when to use them. For example, in the procedure called 'inventoryControl', which should be executed at the initial stage of a product purchase, it performs the necessary validation of stock quantities. After purchase approval, it decreases the quantities in the database, thereby protecting data integrity and consistency. This demonstrates that the correct timing for using procedures is crucial.
